@@ -39,15 +39,6 @@ func getEvents(context *gin.Context) {
 }
 
 func createEvent(context *gin.Context) {
-	token := context.Request.Header.Get("Authorization")
-
-	if token == "" {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
-		return
-	}
-
-	if ()
-
 	var event models.Event
 	err := context.ShouldBindJSON(&event)
 
@@ -56,8 +47,10 @@ func createEvent(context *gin.Context) {
 		return
 	}
 
+	userId := context.GetInt64("userId")
+
 	event.Id = 1
-	event.UserId = 1
+	event.UserId = userId
 
 	err = event.Save()
 
@@ -78,10 +71,16 @@ func updateEvent(context *gin.Context) {
 		return
 	}
 
-	_, err = models.GetEventById(id)
+	event, err := models.GetEventById(id)
+	userId := context.GetInt64("userId")
 
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf(`could not update event in db with id: %v`, id)})
+		return
+	}
+
+	if userId != event.UserId {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf(`could not update event in db with id: %v, because u are not the author`, id)})
 		return
 	}
 
@@ -113,9 +112,15 @@ func deleteEvent(context *gin.Context) {
 	}
 
 	event, err := models.GetEventById(id)
+	userId := context.GetInt64("userId")
 
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf(`could not find event in db with id: %v`, id)})
+		return
+	}
+
+	if userId != event.UserId {
+		context.JSON(http.StatusInternalServerError, gin.H{"message": fmt.Sprintf(`could not update event in db with id: %v, because u are not the author`, id)})
 		return
 	}
 
